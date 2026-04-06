@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Worm Arena Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { margin: 0; overflow: hidden; background-color: #020617; font-family: 'Plus Jakarta Sans', sans-serif; touch-action: none; }
+        canvas { display: block; transition: filter 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .blur-bg { filter: blur(20px) brightness(0.5); }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-premium { background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); box-shadow: 0 10px 25px -5px rgba(67, 56, 202, 0.5); }
+        @keyframes pulse-gold { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .animate-gold { animation: pulse-gold 2s infinite; }
+        #shop-container::-webkit-scrollbar { width: 4px; }
+        #shop-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-layer" class="absolute inset-0 pointer-events-none flex items-center justify-center">
+        <div id="lobbyScreen" class="pointer-events-auto w-full max-w-5xl px-6">
+            <div class="glass p-8 md:p-12 rounded-[48px] border-white/20 flex flex-col md:flex-row gap-12 items-center">
+                <div class="flex-1 space-y-8 text-center md:text-left">
+                    <div class="space-y-2">
+                        <h1 class="text-6xl font-black text-white italic tracking-tighter uppercase leading-none">WORM<span class="text-indigo-500">ARENA</span></h1>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button id="playBtn" class="btn-premium flex-1 py-5 text-white font-black rounded-3xl text-xl transition-all hover:scale-[1.02] active:scale-95 uppercase italic tracking-widest">PLAY NOW</button>
+                        <div class="glass px-8 py-5 rounded-3xl flex flex-col items-center justify-center border-white/10">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">BEST SCORE</span>
+                            <span id="bestScoreDisplay" class="text-2xl font-black text-white italic">0</span>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <label class="text-xs font-bold text-indigo-400 uppercase tracking-widest ml-2">NICKNAME</label>
+                        <input type="text" id="playerNameInput" placeholder="Enter Name..." maxlength="12" class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all">
+                    </div>
+                </div>
+                <div class="w-full md:w-[400px] space-y-6">
+                    <div class="flex justify-between items-center bg-black/40 p-4 rounded-2xl border border-white/10">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">GOLD BALANCE</span>
+                        <div class="flex items-center gap-2">
+                            <span id="goldDisplay" class="text-xl font-black text-amber-400">0</span>
+                            <div class="w-6 h-6 bg-amber-500 rounded-full border-2 border-amber-300 animate-gold"></div>
+                        </div>
+                    </div>
+                    <div class="glass rounded-[32px] p-2 flex gap-1 border-white/10">
+                        <button onclick="switchTab('skin')" id="tab-skin" class="flex-1 py-3 text-xs font-bold rounded-2xl transition-all bg-indigo-600 text-white uppercase">Skin</button>
+                        <button onclick="switchTab('acc')" id="tab-acc" class="flex-1 py-3 text-xs font-bold rounded-2xl transition-all text-slate-400 hover:text-white uppercase">Acc</button>
+                    </div>
+                    <div id="shop-container" class="h-[250px] overflow-y-auto pr-2 space-y-4">
+                        <div id="skin-content" class="grid grid-cols-2 gap-3">
+                            <input type="color" id="color1" value="#6366f1" class="w-full h-12 rounded-xl bg-white/5 p-1 border border-white/10 cursor-pointer">
+                            <input type="color" id="color2" value="#ec4899" class="w-full h-12 rounded-xl bg-white/5 p-1 border border-white/10 cursor-pointer">
+                            <button onclick="setPattern('solid')" id="pat-solid" class="py-3 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase">SOLID</button>
+                            <button onclick="setPattern('striped')" id="pat-striped" class="py-3 bg-white/5 text-slate-500 text-[10px] font-black rounded-xl uppercase border border-white/10">STRIPED</button>
+                        </div>
+                        <div id="acc-content" class="hidden grid grid-cols-1 gap-2">
+                            <div class="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
+                                <span class="text-sm font-bold text-white uppercase">Hair Style</span>
+                                <select id="acc-hair" class="bg-slate-800 text-xs text-white border-none rounded-lg p-1 outline-none">
+                                    <option value="none">None</option>
+                                    <option value="mohawk">Mohawk</option>
+                                    <option value="spike">Spiky</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
+                                <span class="text-sm font-bold text-white uppercase">Eyes Style</span>
+                                <select id="acc-eyes" class="bg-slate-800 text-xs text-white border-none rounded-lg p-1 outline-none">
+                                    <option value="default">Default</option>
+                                    <option value="cool">Cool Glass</option>
+                                    <option value="angry">Angry</option>
+                                </select>
+                            </div>
+                            <div class="p-4 text-center">
+                                <canvas id="previewCanvas" width="180" height="180" class="mx-auto rounded-full bg-white/5 border border-white/5"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="gameHUD" class="hidden absolute inset-0 pointer-events-none p-6 flex flex-col justify-between">
+            <div class="flex justify-between items-start w-full">
+                <div class="flex flex-col gap-4 items-start">
+                    <div class="glass p-1 rounded-2xl pointer-events-auto border-white/20 shadow-xl">
+                        <canvas id="minimapCanvas" width="150" height="150" class="rounded-xl"></canvas>
+                    </div>
+                    <div class="glass px-5 py-3 rounded-2xl flex items-center gap-5 shadow-2xl border-white/10 pointer-events-auto">
+                        <div class="flex flex-col">
+                            <span class="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] leading-none mb-1">SCORE</span>
+                            <span id="scoreDisplay" class="text-3xl font-black text-white italic leading-none">0</span>
+                        </div>
+                        <div class="w-px h-8 bg-white/10"></div>
+                        <div class="flex flex-col">
+                            <span class="text-[8px] font-bold text-amber-500 uppercase tracking-[0.2em] leading-none mb-1">GOLD</span>
+                            <span id="currentGoldDisplay" class="text-lg font-black text-white leading-none">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass w-56 p-5 rounded-[32px] border-white/10 shadow-2xl pointer-events-auto">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                        <h4 class="text-[10px] font-black text-white uppercase tracking-[0.2em]">ARENA RANKING</h4>
+                    </div>
+                    <div id="liveLeaderboard" class="space-y-3 text-white"></div>
+                </div>
+            </div>
+            <div class="flex justify-between items-end p-4 w-full">
+                <div id="analog-base" class="pointer-events-auto w-[100px] h-[100px] rounded-full glass relative border-2 border-white/10">
+                    <div id="analog-stick" class="w-[40px] h-[40px] bg-indigo-500 rounded-full absolute top-[28px] left-[28px] shadow-lg pointer-events-none"></div>
+                </div>
+                <div id="boost-btn" class="pointer-events-auto w-[80px] h-[80px] rounded-full border-4 border-red-500/40 bg-red-500/20 flex items-center justify-center text-red-500 font-black italic tracking-tighter shadow-xl transition-all active:scale-90 active:bg-red-500 active:text-white select-none">BOOST</div>
+            </div>
+        </div>
+        <div id="deathScreen" class="hidden pointer-events-auto w-full max-w-md">
+            <div class="glass p-10 rounded-[48px] text-center border-red-500/20 shadow-2xl">
+                <h2 class="text-4xl font-black text-white mb-2 italic uppercase">ARENA END</h2>
+                <p class="text-slate-400 mb-8 font-medium italic">You earned <span id="rewardGold" class="text-amber-400 font-bold">0</span> Gold.</p>
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                    <div class="bg-black/30 p-4 rounded-3xl text-center">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">FINAL SCORE</span>
+                        <span id="finalScore" class="text-2xl font-black text-indigo-400 italic leading-none">0</span>
+                    </div>
+                    <div class="bg-black/30 p-4 rounded-3xl text-center">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">POSITION</span>
+                        <span id="finalRank" class="text-2xl font-black text-white italic leading-none">#1</span>
+                    </div>
+                </div>
+                <button id="respawnBtn" class="w-full py-5 bg-white text-slate-900 font-black rounded-[24px] uppercase italic tracking-widest shadow-xl transition-all hover:bg-slate-100">RETRY</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const WORLD_SIZE = 10000; const BOT_COUNT = 55; const FOOD_COUNT = 1800;
+        const COLORS = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#a855f7'];
+        const FOOD_ICONS = ['🍎', '🍔', '🍕', '🍩', '🥑', '🍗', '🍉', '🍦', '🍓', '🍍', '🌮'];
+        const BOT_NAMES = ['DragonX', 'Worminator', 'CyberSnake', 'Shadow', 'King', 'Alpha', 'Glitch', 'Venom', 'Python', 'Turbo', 'Hunter', 'Omega', 'Phantom', 'Blitz', 'Raptor'];
+        let gameState = 'LOBBY'; let gold = parseInt(localStorage.getItem('worm_arena_gold')) || 0;
+        let bestScore = parseInt(localStorage.getItem('worm_arena_best')) || 0;
+        let playerCustom = { name: "PLAYER", color1: "#6366f1", color2: "#ec4899", pattern: "solid", hair: "none", eyes: "default" };
+        let canvas, ctx, mCtx, pCtx, width, height, player, enemies = [], foods = [], score = 0, cameraZoom = 1, isBoosting = false;
+        let joystick = { active: false, angle: 0 }, mouse = { x: 0, y: 0 };
+        class Worm {
+            constructor(x, y, custom, isPlayer = false, startLen = 20, startScore = 0) {
+                this.segments = []; this.length = startLen; this.baseRadius = 12; this.radius = 12;
+                this.custom = {...custom}; this.angle = Math.random() * Math.PI * 2; this.speed = 2.8;
+                this.isPlayer = isPlayer; this.isDead = false; this.score = startScore;
+                for (let i = 0; i < this.length; i++) this.segments.push({ x: x - Math.cos(this.angle) * i * 5, y: y - Math.sin(this.angle) * i * 5 });
+            }
+            update() {
+                if (this.isDead) return;
+                this.radius = Math.min(85, this.baseRadius + (this.length - 20) * 0.15);
+                if (this.isPlayer) {
+                    if (joystick.active) this.angle = joystick.angle;
+                    else this.angle = Math.atan2(mouse.y - height/2, mouse.x - width/2);
+                    if (isBoosting && this.score > 50) {
+                        this.speed = 7.5;
+                        if (Math.random() > 0.8) { this.score -= 6; this.length = Math.max(20, this.length - 0.22); }
+                    } else this.speed = 2.8;
+                } else {
+                    this.handleAI(); if (Math.random() > 0.94) { this.score += Math.floor(Math.random() * 25) + 10; this.length += 0.3; }
+                }
+                const head = { ...this.segments[0] }; head.x += Math.cos(this.angle) * this.speed; head.y += Math.sin(this.angle) * this.speed;
+                if (head.x < 0 || head.x > WORLD_SIZE || head.y < 0 || head.y > WORLD_SIZE) { this.die(); return; }
+                this.segments.unshift(head); while (this.segments.length > this.length) this.segments.pop(); this.checkCollision();
+            }
+            handleAI() {
+                const head = this.segments[0]; let targetAngle = this.angle; let closest = null, minDist = 850;
+                foods.forEach(f => { const d = Math.hypot(head.x - f.x, head.y - f.y); if (d < minDist) { minDist = d; closest = f; } });
+                if (closest) targetAngle = Math.atan2(closest.y - head.y, closest.x - head.x);
+                if (head.x < 650 || head.x > WORLD_SIZE-650 || head.y < 650 || head.y > WORLD_SIZE-650) targetAngle = Math.atan2(WORLD_SIZE/2 - head.y, WORLD_SIZE/2 - head.x);
+                const worms = [player, ...enemies];
+                worms.forEach(w => { if (w === this || w.isDead || !w) return; if (Math.hypot(head.x - w.segments[0].x, head.y - w.segments[0].y) < 280) targetAngle += 0.9; });
+                const diff = targetAngle - this.angle; this.angle += Math.atan2(Math.sin(diff), Math.cos(diff)) * 0.16;
+            }
+            checkCollision() {
+                const head = this.segments[0]; const worms = [player, ...enemies];
+                for (let w of worms) {
+                    if (!w || w === this || w.isDead) continue; const d = this.radius + w.radius - 5;
+                    if (Math.abs(head.x - w.segments[0].x) < 2200 && Math.abs(head.y - w.segments[0].y) < 2200) {
+                        for (let j = 0; j < w.segments.length; j += 2) {
+                            const s = w.segments[j]; if (Math.abs(head.x - s.x) < d && Math.abs(head.y - s.y) < d) { if (Math.hypot(head.x - s.x, head.y - s.y) < d) { this.die(); return; } }
+                        }
+                    }
+                }
+            }
+            die() {
+                this.isDead = true;
+                for(let i=0; i<this.segments.length; i+=5) foods.push({ x: this.segments[i].x, y: this.segments[i].y, icon: FOOD_ICONS[Math.floor(Math.random()*FOOD_ICONS.length)], size: 25 });
+                if (this.isPlayer) onGameOver();
+                else {
+                    const idx = enemies.indexOf(this);
+                    setTimeout(() => { if (idx > -1 && gameState === 'PLAYING') enemies[idx] = new Worm(Math.random()*WORLD_SIZE, Math.random()*WORLD_SIZE, { ...playerCustom, color1: COLORS[Math.floor(Math.random()*COLORS.length)], color2: '#fff', pattern: 'solid', name: BOT_NAMES[Math.floor(Math.random()*BOT_NAMES.length)] + "_" + Math.floor(Math.random()*99) }, false); }, 3000);
+                }
+            }
+            draw(tCtx, camX, camY) {
+                if (this.isDead) return; const offX = (tCtx === pCtx) ? 90 : width/2; const offY = (tCtx === pCtx) ? 90 : height/2;
+                tCtx.save();
+                for (let i = this.segments.length - 1; i >= 0; i--) {
+                    const s = this.segments[i]; tCtx.beginPath(); tCtx.fillStyle = (this.custom.pattern === 'striped' && i % 4 < 2) ? this.custom.color2 : this.custom.color1;
+                    tCtx.arc(s.x - camX + offX, s.y - camY + offY, this.radius, 0, Math.PI*2); tCtx.fill();
+                }
+                const h = this.segments[0]; this.drawFace(tCtx, h.x - camX + offX, h.y - camY + offY);
+                if (tCtx === ctx) { tCtx.fillStyle = 'rgba(255,255,255,0.7)'; tCtx.font = `bold ${Math.max(12, this.radius*0.75)}px Plus Jakarta Sans`; tCtx.textAlign = 'center'; tCtx.fillText(this.custom.name, h.x - camX + offX, h.y - camY + offY - this.radius - 15); }
+                tCtx.restore();
+            }
+            drawFace(tCtx, x, y) {
+                tCtx.save(); tCtx.translate(x, y); tCtx.rotate(this.angle); const s = this.radius / 12; tCtx.scale(s, s);
+                tCtx.fillStyle = 'white'; tCtx.beginPath(); tCtx.arc(6, -6, 4, 0, Math.PI*2); tCtx.fill(); tCtx.beginPath(); tCtx.arc(6, 6, 4, 0, Math.PI*2); tCtx.fill();
+                tCtx.fillStyle = 'black'; tCtx.beginPath(); tCtx.arc(7, -6, 2, 0, Math.PI*2); tCtx.fill(); tCtx.beginPath(); tCtx.arc(7, 6, 2, 0, Math.PI*2); tCtx.fill();
+                if (this.custom.eyes === 'cool') { tCtx.fillStyle = '#111'; tCtx.fillRect(4, -11, 4, 22); }
+                if (this.custom.hair === 'mohawk') { tCtx.fillStyle = '#333'; tCtx.beginPath(); tCtx.moveTo(-10, 0); tCtx.lineTo(5, 0); tCtx.lineTo(-5, -15); tCtx.fill(); }
+                tCtx.restore();
+            }
+        }
+        window.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('gameCanvas'); ctx = canvas.getContext('2d'); mCtx = document.getElementById('minimapCanvas').getContext('2d');
+            pCtx = document.getElementById('previewCanvas').getContext('2d'); resize(); updateWalletUI(); requestAnimationFrame(gameLoop);
+        });
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        function startBattle() {
+            playerCustom.name = (document.getElementById('playerNameInput').value || "PLAYER").toUpperCase(); gameState = 'PLAYING';
+            document.getElementById('lobbyScreen').classList.add('hidden'); document.getElementById('gameHUD').classList.remove('hidden'); canvas.classList.remove('blur-bg');
+            score = 0; player = new Worm(Math.random()*8000+1000, Math.random()*8000+1000, playerCustom, true);
+            enemies = Array.from({length: BOT_COUNT}, () => {
+                const r = Math.random(); let sl, ss;
+                if (r > 0.92) { sl = 500+Math.random()*400; ss = sl*35; } else if (r > 0.7) { sl = 180+Math.random()*200; ss = sl*28; }
+                else if (r > 0.4) { sl = 85+Math.random()*70; ss = sl*20; } else { sl = 25+Math.random()*20; ss = sl*10; }
+                return new Worm(Math.random()*WORLD_SIZE, Math.random()*WORLD_SIZE, { ...playerCustom, color1: COLORS[Math.floor(Math.random()*COLORS.length)], color2: '#fff', pattern: 'solid', name: BOT_NAMES[Math.floor(Math.random()*BOT_NAMES.length)]+"_"+Math.floor(Math.random()*99) }, false, sl, ss);
+            });
+            foods = Array.from({length: FOOD_COUNT}, () => ({ x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE, icon: FOOD_ICONS[Math.floor(Math.random()*FOOD_ICONS.length)], size: 25 }));
+        }
+        function onGameOver() {
+            gameState = 'DEATH'; const active = [...enemies.filter(e => e && !e.isDead), player]; active.sort((a,b)=>(b.score||0)-(a.score||0));
+            const earned = Math.floor(score/100); gold += earned; localStorage.setItem('worm_arena_gold', gold);
+            if (score > bestScore) { bestScore = score; localStorage.setItem('worm_arena_best', bestScore); }
+            document.getElementById('rewardGold').innerText = earned; document.getElementById('finalScore').innerText = Math.floor(score);
+            document.getElementById('finalRank').innerText = "#"+(active.indexOf(player)+1); document.getElementById('deathScreen').classList.remove('hidden');
+            document.getElementById('gameHUD').classList.add('hidden'); updateWalletUI();
+        }
+        function gameLoop() {
+            ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, width, height);
+            if (gameState === 'PLAYING' && player) {
+                const head = player.segments[0]; cameraZoom += (Math.max(0.22, 1-(player.length-20)*0.0006) - cameraZoom)*0.04;
+                ctx.save(); ctx.translate(width/2, height/2); ctx.scale(cameraZoom, cameraZoom); ctx.translate(-width/2, -height/2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.03)'; for(let i=0; i<WORLD_SIZE; i+=150) { ctx.beginPath(); ctx.moveTo(i-head.x+width/2, -head.y+height/2); ctx.lineTo(i-head.x+width/2, WORLD_SIZE-head.y+height/2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-head.x+width/2, i-head.y+height/2); ctx.lineTo(WORLD_SIZE-head.x+width/2, i-head.y+height/2); ctx.stroke(); }
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 25; ctx.strokeRect(-head.x+width/2, -head.y+height/2, WORLD_SIZE, WORLD_SIZE);
+                ctx.font = '24px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                foods.forEach((f, i) => {
+                    const dx = f.x-head.x+width/2, dy = f.y-head.y+height/2;
+                    if(Math.abs(dx-width/2) < (width/cameraZoom)/2+100 && Math.abs(dy-height/2) < (height/cameraZoom)/2+100) {
+                        ctx.fillText(f.icon, dx, dy);
+                        const active = [player, ...enemies.filter(e => !e.isDead)];
+                        for(let w of active) { if (Math.hypot(w.segments[0].x - f.x, w.segments[0].y - f.y) < w.radius + 18) { foods[i] = { x: Math.random()*WORLD_SIZE, y: Math.random()*WORLD_SIZE, icon: FOOD_ICONS[Math.floor(Math.random()*FOOD_ICONS.length)], size: 25 }; w.length += 2.8; w.score += 70; if(w.isPlayer) { score = w.score; document.getElementById('scoreDisplay').innerText = Math.floor(score); document.getElementById('currentGoldDisplay').innerText = Math.floor(score/100); } break; } }
+                    }
+                });
+                enemies.forEach(e => { if(!e.isDead) { e.update(); e.draw(ctx, head.x, head.y); } });
+                player.update(); player.draw(ctx, head.x, head.y); ctx.restore();
+                drawMinimap(head.x, head.y); if (Math.random() < 0.06) updateLeaderboard();
+            } else if (gameState === 'LOBBY') updatePreview();
+            requestAnimationFrame(gameLoop);
+        }
+        function updateWalletUI() { 
+            const gd = document.getElementById('goldDisplay'); const bsd = document.getElementById('bestScoreDisplay');
+            if(gd) gd.innerText = gold; if(bsd) bsd.innerText = bestScore;
+        }
+        function drawMinimap(px, py) { mCtx.fillStyle = '#000'; mCtx.fillRect(0,0,150,150); const s = 150/WORLD_SIZE; mCtx.fillStyle = 'rgba(239,68,68,0.6)'; enemies.forEach(e => { if(!e.isDead) { const sz = e.radius > 40 ? 3.5 : 2; mCtx.fillRect(e.segments[0].x*s-sz/2, e.segments[0].y*s-sz/2, sz, sz); } }); mCtx.fillStyle = '#6366f1'; mCtx.beginPath(); mCtx.arc(px*s, py*s, 3.5, 0, Math.PI*2); mCtx.fill(); }
+        function updateLeaderboard() { const all = [player, ...enemies.filter(e => !e.isDead)].sort((a,b)=>b.score-a.score).slice(0,5); document.getElementById('liveLeaderboard').innerHTML = all.map((w,i)=>`<div class="flex justify-between items-center ${w.isPlayer?'text-indigo-400 font-black':'text-slate-300'}"><span class="truncate w-32 text-[11px] font-bold">${i+1}. ${w.custom.name}</span><span class="text-[11px] font-black italic">${Math.floor(w.score)}</span></div>`).join(''); }
+        function updatePreview() { pCtx.fillStyle = '#0f172a'; pCtx.fillRect(0,0,180,180); const time = Date.now()*0.005; const pW = new Worm(0,0, playerCustom, true); pW.segments = []; for(let i=0; i<10; i++) pW.segments.push({x: Math.sin(time+i*0.5)*20, y: i*12-50}); pW.angle = -Math.PI/2; pW.draw(pCtx, 0, 0); }
+        function switchTab(t) { document.getElementById('skin-content').classList.toggle('hidden', t!=='skin'); document.getElementById('acc-content').classList.toggle('hidden', t!=='acc'); document.getElementById('tab-skin').className = `flex-1 py-3 text-xs font-bold rounded-2xl ${t==='skin'?'bg-indigo-600 text-white':'text-slate-400'}`; document.getElementById('tab-acc').className = `flex-1 py-3 text-xs font-bold rounded-2xl ${t==='acc'?'bg-indigo-600 text-white':'text-slate-400'}`; }
+        function setPattern(p) { playerCustom.pattern = p; document.getElementById('pat-solid').className = `flex-1 py-3 text-[10px] font-black rounded-xl ${p==='solid'?'bg-indigo-600 text-white':'bg-white/5 text-slate-500'}`; document.getElementById('pat-striped').className = `flex-1 py-3 text-[10px] font-black rounded-xl ${p==='striped'?'bg-indigo-600 text-white':'bg-white/5 text-slate-500'}`; }
+        window.addEventListener('mousemove', e => { if(!joystick.active) { mouse.x=e.clientX; mouse.y=e.clientY; } });
+        const stick = document.getElementById('analog-stick'); const base = document.getElementById('analog-base');
+        const handleT = (e) => { e.preventDefault(); joystick.active = true; const r = base.getBoundingClientRect(); const t = e.touches[0]; const dx = t.clientX - (r.left + 50), dy = t.clientY - (r.top + 50); const d = Math.min(35, Math.hypot(dx, dy)), a = Math.atan2(dy, dx); stick.style.transform = `translate(${Math.cos(a)*d}px, ${Math.sin(a)*d}px)`; joystick.angle = a; };
+        base.addEventListener('touchstart', handleT); base.addEventListener('touchmove', handleT); base.addEventListener('touchend', () => { joystick.active=false; stick.style.transform='translate(0,0)'; });
+        const bBtn = document.getElementById('boost-btn'); bBtn.addEventListener('touchstart', e=>{e.preventDefault(); isBoosting=true;}); bBtn.addEventListener('mousedown', ()=>{isBoosting=true;}); bBtn.addEventListener('touchend', ()=>{isBoosting=false;}); bBtn.addEventListener('mouseup', ()=>{isBoosting=false;});
+        document.getElementById('color1').oninput = e => playerCustom.color1 = e.target.value;
+        document.getElementById('color2').oninput = e => playerCustom.color2 = e.target.value;
+        document.getElementById('acc-hair').onchange = e => playerCustom.hair = e.target.value;
+        document.getElementById('acc-eyes').onchange = e => playerCustom.eyes = e.target.value;
+        document.getElementById('playBtn').onclick = startBattle;
+        document.getElementById('respawnBtn').onclick = () => { document.getElementById('deathScreen').classList.add('hidden'); document.getElementById('lobbyScreen').classList.remove('hidden'); canvas.classList.add('blur-bg'); gameState = 'LOBBY'; };
+    </script>
+</body>
+</html>
